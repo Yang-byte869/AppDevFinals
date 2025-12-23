@@ -1,0 +1,15 @@
+:root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; --danger: #ef4444; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); padding: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .input-group { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; margin-bottom: 2rem; }
+        input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        button { padding: 10px 15px; border-radius: 6px; cursor: pointer; border: none; font-weight: 600; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-del { background: var(--danger); color: white; padding: 5px 10px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e2e8f0; }
+        .empty-msg { text-align: center; color: #94a3b8; padding: 20px; }
+        .btn-refresh { background: #64748b; color: white; }
+        .btn-clear { background: var(--danger); color: white; }
+        .loading { font-style: italic; color: #666; margin: 10px 0; }
+        .input-group button { margin-left: 6px; }
