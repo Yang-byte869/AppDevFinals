@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    
+    <title>Inventory Manager</title>
+    
+</head>
+<body>
+    <div class="container">
+    <header>
+        <h1>Inventory Manager</h1>
+    </header>
+    
+    <div class="input-group">
+        <input type="text" id="itemName" placeholder="Item Name">
+        <input type="number" id="itemQty" placeholder="Qty">
+        <input type="number" id="itemPrice" placeholder="Price (₱)">
+        <button class="btn-add" onclick="createItem()">Add Item</button>
+        <button class="btn-refresh" onclick="fetchInventory()">Refresh</button>
+        <button class="btn-clear" onclick="clearServerItems()">Clear server items</button>
+    </div>
+
+    <div id="loader" class="loading" style="display:none;">Syncing with server...</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Item</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="inventoryBody"></tbody>
+    </table>
+</div>
+</div>
+<script src="inventory.js" defer></script> 
+
+
+
+</body>
+</html>  
