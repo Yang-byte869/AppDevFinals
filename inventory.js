@@ -1,168 +1,161 @@
-// Helper to show/hide loader
+const API_URL = 'https://jsonplaceholder.typicode.com/posts';
+const LOW_STOCK_THRESHOLD = 5;
+
+// SHOW / HIDE LOADER
 function showLoader(show) {
     const l = document.getElementById('loader');
     if (l) l.style.display = show ? 'block' : 'none';
 }
 
-// READ
-async function fetchInventory() {
-    showLoader(true);
-    try {
-        const res = await fetch(`${API_URL}?_limit=10`);
-        const data = await res.json();
-        
-        const parsed = data.map(d => {
-            let qty = 0, price = 0.00;
-            try {
-                const parsedBody = JSON.parse(d.body);
-                qty = parseInt(parsedBody.qty) || 0;
-                price = parseFloat(parsedBody.price) || 0.00;
-            } catch(e) {
-                
-                qty = parseInt(d.body) || 0;
-            }
-            return { id: d.id, name: d.title, qty, price };
-        });
-        renderTable(parsed);
-    } catch (err) {
-        console.error('Fetch failed', err);
-
-        // Silent failure: show empty list instead of alerting
-        
-        renderTable([]);
-    } finally {
-        showLoader(false);
-    }
+function getLowStockBadge(qty) {
+    return qty <= LOW_STOCK_THRESHOLD ? `<span class="badge-low">⚠️ Low</span>` : '';
 }
 
-// CREATE
+
+function renderSingleItem(item) {
+    const tbody = document.getElementById('inventoryBody');
+    
+    // Remove "No items" message if it exists
+    if (tbody.querySelector('.empty-msg')) tbody.innerHTML = '';
+
+    const row = document.createElement('tr');
+    if (item.qty <= LOW_STOCK_THRESHOLD) row.classList.add('low-stock-row');
+
+    row.innerHTML = `
+        <td>${item.id}</td>
+        <td>${item.name}</td>
+        <td>${item.qty} ${getLowStockBadge(item.qty)}</td>
+        <td>PHP ${item.price.toFixed(2)}</td>
+        <td>PHP ${(item.qty * item.price).toFixed(2)}</td>
+        <td>
+            <button onclick="updateItem(${item.id}, this)">Edit</button>
+            <button onclick="deleteItem(${item.id}, this)">Delete</button>
+        </td>
+    `;
+    tbody.appendChild(row);
+}
+
+
+function fetchInventory() {
+    const tbody = document.getElementById('inventoryBody');
+    const rows = tbody.querySelectorAll('tr');
+
+    if (rows.length === 0 || tbody.querySelector('.empty-msg')) {
+        alert("No items to refresh.");
+        return;
+    }
+
+    showLoader(true);
+    setTimeout(() => {
+        rows.forEach(row => {
+            const qtyCell = row.cells[2];
+            const qty = parseInt(qtyCell.textContent);
+
+            if (!isNaN(qty)) {
+                if (qty <= LOW_STOCK_THRESHOLD) {
+                    row.classList.add('low-stock-row');
+                    if (!qtyCell.innerHTML.includes('badge-low')) {
+                        qtyCell.innerHTML = `${qty} <span class="badge-low">⚠️ Low</span>`;
+                    }
+                } else {
+                    row.classList.remove('low-stock-row');
+                    qtyCell.innerHTML = qty;
+                }
+            }
+        });
+        showLoader(false);
+    }, 400);
+}
+
+// ADD ITEM
 async function createItem() {
-    const name = document.getElementById('itemName').value.trim();
-    const qty = parseInt(document.getElementById('itemQty').value);
-    const price = parseFloat(document.getElementById('itemPrice').value);
+    const nameInput = document.getElementById('itemName');
+    const qtyInput = document.getElementById('itemQty');
+    const priceInput = document.getElementById('itemPrice');
+
+    const name = nameInput.value.trim();
+    const qty = parseInt(qtyInput.value);
+    const price = parseFloat(priceInput.value);
 
     if (!name || isNaN(qty) || isNaN(price)) {
         alert('Please fill all fields correctly');
         return;
     }
 
-    const payload = { title: name, body: JSON.stringify({ qty, price }), userId: 1 };
+    const newItem = { 
+        id: Math.floor(Math.random() * 10000), 
+        name: name, 
+        qty: qty, 
+        price: price 
+    };
 
     showLoader(true);
     try {
-        const res = await fetch(API_URL, {
+        await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ title: name, body: JSON.stringify({ qty, price }) })
         });
-        const created = await res.json();
-        // Re-fetch to reflect server state (silent)
-        await fetchInventory();
-        document.getElementById('itemName').value = '';
-        document.getElementById('itemQty').value = '';
-        document.getElementById('itemPrice').value = '';
+        renderSingleItem(newItem); // Now this works!
+        nameInput.value = ''; qtyInput.value = ''; priceInput.value = '';
     } catch (err) {
-        console.error('Create failed', err);
-        // silent failure
+        console.error('Add failed', err);
     } finally {
         showLoader(false);
     }
 }
 
-// UPDATE
-async function updateItem(id) {
-    const newName = prompt('New name:');
-    if (newName === null) return; // cancelled
-    const newQtyRaw = prompt('New quantity:');
-    if (newQtyRaw === null) return;
-    const newPriceRaw = prompt('New price:');
-    if (newPriceRaw === null) return;
 
-    const newQty = parseInt(newQtyRaw);
-    const newPrice = parseFloat(newPriceRaw);
-    if (!newName.trim() || isNaN(newQty) || isNaN(newPrice)) {
-        alert('Invalid input');
-        return;
+function clearServerItems() {
+    if (confirm('Clear all items from the display?')) {
+        const tbody = document.getElementById('inventoryBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No items found.</td></tr>';
     }
+}
+
+
+async function updateItem(id, btn) {
+    const row = btn.closest('tr');
+    const currentName = row.cells[1].textContent;
+    const currentQty = parseInt(row.cells[2].textContent);
+    const currentPrice = row.cells[3].textContent.replace('PHP ', '');
+
+    const newName = prompt('Enter new name:', currentName);
+    if (!newName) return;
+    const newQty = parseInt(prompt('Enter new quantity:', currentQty));
+    if (isNaN(newQty)) return;
+    const newPrice = parseFloat(prompt('Enter new price:', currentPrice));
+    if (isNaN(newPrice)) return;
 
     showLoader(true);
     try {
-        await fetch(`${API_URL}/${id}`, {
+        await fetch(`${API_URL}/1`, { 
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json; charset=UTF-8' },
             body: JSON.stringify({ title: newName, body: JSON.stringify({ qty: newQty, price: newPrice }) })
         });
-        await fetchInventory();
+
+        row.cells[1].textContent = newName;
+        row.cells[2].innerHTML = `${newQty} ${getLowStockBadge(newQty)}`;
+        row.cells[3].textContent = `PHP ${newPrice.toFixed(2)}`;
+        row.cells[4].textContent = `PHP ${(newQty * newPrice).toFixed(2)}`;
+
+        if (newQty <= LOW_STOCK_THRESHOLD) row.classList.add('low-stock-row');
+        else row.classList.remove('low-stock-row');
+
     } catch (err) {
         console.error('Update failed', err);
-        // silent failure
     } finally {
         showLoader(false);
     }
 }
 
-// DELETE single
-async function deleteItem(id, element) {
+// DELETE ITEM
+async function deleteItem(id, btn) {
     if (!confirm('Delete this item?')) return;
-    // Remove row locally for instant feedback, regardless of network outcome
-    if (element && element.closest) element.closest('tr').remove();
-    showLoader(true);
-    try {
-        await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-        // silent success
-    } catch (err) {
-        console.error('Delete failed', err);
-        // silent failure - row already removed locally
-    } finally {
-        showLoader(false);
-    }
-} 
-
-// DELETE all displayed items
-async function clearServerItems() {
-    if (!confirm('Delete all displayed items on server?')) return;
-    const body = document.getElementById('inventoryBody');
-    const ids = Array.from(body.querySelectorAll('tr td:first-child')).map(td => td.textContent.trim());
-    // Remove rows locally immediately for a quiet UX
-    body.innerHTML = '';
-    showLoader(true);
-    try {
-        await Promise.all(ids.map(id => fetch(`${API_URL}/${id}`, { method: 'DELETE' })));
-        // silent success
-    } catch (err) {
-        console.error('Failed to clear items', err);
-        // silent failure
-    } finally {
-        showLoader(false);
-    }
-} 
-
-// Render
-function renderTable(items) {
+    btn.closest('tr').remove();
     const tbody = document.getElementById('inventoryBody');
-    tbody.innerHTML = '';
-    if (!items || items.length === 0) {
+    if (tbody.rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No items found.</td></tr>';
-        return;
     }
-
-    items.forEach(item => {
-        const total = (item.qty * item.price).toFixed(2);
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${item.id}</td>
-            <td>${item.name}</td>
-            <td>${item.qty}</td>
-            <td>PHP ${item.price.toFixed(2)}</td>
-            <td>PHP ${total}</td>
-            <td>
-                <button class="btn-edit" onclick="updateItem(${item.id})">Edit</button>
-                <button class="btn-del" onclick="deleteItem(${item.id}, this)">Delete</button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
 }
-
-// Initial load: show empty table (no automatic example fetch)
-window.addEventListener('DOMContentLoaded', () => renderTable([]));
